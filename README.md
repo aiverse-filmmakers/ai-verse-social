@@ -37,6 +37,8 @@ The public download command cannot fetch a private repository anonymously.
 3. **Publish:** Post now, plan upcoming times, or prepare recurring posting with your agent’s scheduler. Live requests use the same tracking as scheduled work.
 4. **Remember:** Track each account separately, avoid repeating successful posts, recover partial failures and learn from caption corrections. Newly connected accounts can use earlier videos when you enable that policy.
 
+It also checks for repeated footage. Uncertain matches wait for review; an account that has not received the work can still get it. [Repeat protection](ai-verse-social-media/references/repeat-guard.md).
+
 Try: “Post this video on my selected accounts tomorrow.” Or: “What still needs posting?” These are examples, not required wording.
 
 Optional comment/DM setup gathers your rules and checks for an available engagement integration. **This package’s local engine does not run a comment or DM worker.** Website intake also requires a separate source integration.

@@ -25,3 +25,5 @@ Local pause blocks sending but permits fetching existing provider receipts. Disa
 Cancellation DELETE removes the provider record, so a durable cancellation intent followed by authenticated absence is valid cancellation evidence. It cannot prove a platform worker did not publish during the race. Never promise that local pause or provider deletion unpublishes content. Explicit cancelled cycles require a fresh reviewed request before reuse; previous evidence stays in events.
 
 Storage failures are separate from publication failures. `tick` retries pending local archive actions, `export` rebuilds logs, and bounded `drive-sync` repairs cloud filing. Look at `derived_export_error`, `sync_actions` and `drive_exports` in status; retain receipts even when storage is unavailable.
+
+For `repeat_hold`, follow [repeat protection](repeat-guard.md): index or record review, then `repeat-check` to resume unsent jobs. Continue existing provider reconciliation. Never clear receipts/unknown claims to repair a hold. Retry duplicate-source filing/restoration through `repeat-sync` rather than sending again.

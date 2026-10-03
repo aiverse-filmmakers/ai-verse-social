@@ -159,7 +159,7 @@ def restore_backup(source: Path, target: Path) -> dict:
             if db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                 raise UserError("Backup database failed its integrity check; no files restored.")
             schema = db.execute("SELECT value FROM meta WHERE key='schema'").fetchone()
-            if not schema or schema[0] != "1":
+            if not schema or schema[0] not in {"1", "2"}:
                 raise UserError("Backup database needs an unsupported migration; no files restored.")
             db.execute("PRAGMA journal_mode=DELETE")
             if not original_root:
@@ -176,6 +176,17 @@ def restore_backup(source: Path, target: Path) -> dict:
                 if not value.is_relative_to(target) or _hash(stage/value.relative_to(target))!=expected_hash:
                     raise UserError("Backup media does not match its authoritative asset hash.")
                 db.execute("UPDATE assets SET path=? WHERE id=?", (relocated,identity))
+                if schema[0]=='2':
+                    # ZIP extraction changes timestamps; the original bytes were
+                    # just verified above, so rebind this cache signature only.
+                    row=db.execute('SELECT data,source_hash FROM repeat_fingerprints WHERE asset_id=?',(identity,)).fetchone()
+                    if row and row[1]==expected_hash:
+                        try:
+                            data=json.loads(row[0]);stat=(stage/value.relative_to(target)).stat()
+                            data['source_stat']=[stat.st_size,stat.st_mtime_ns]
+                            db.execute('UPDATE repeat_fingerprints SET data=? WHERE asset_id=?',(canonical(data),identity))
+                        except (ValueError,TypeError):
+                            db.execute("UPDATE repeat_fingerprints SET status='pending' WHERE asset_id=?",(identity,))
             for identity, raw, original_hash in db.execute("SELECT id,payload,payload_hash FROM requests").fetchall():
                 payload=json.loads(raw)
                 if payload_digest(payload)!=original_hash: raise UserError("Backup request authorization digest is invalid.")

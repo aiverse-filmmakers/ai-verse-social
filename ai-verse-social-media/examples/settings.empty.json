@@ -49,5 +49,13 @@
     "max_jobs_per_tick": 3,
     "tick_seconds": 240,
     "request_timeout": 60
+  },
+  "repeat_guard": {
+    "enabled": true,
+    "window_days": 60,
+    "hamming_bits": 6,
+    "duration_tolerance": 0.05,
+    "index_batch": 3,
+    "batch_seconds": 120
   }
 }

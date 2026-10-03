@@ -18,6 +18,7 @@ from .config import Workspace, validate_capability
 from .media import probe
 from .providers import ProviderError, extract_post
 from .store import Store
+from .repeat import RepeatGuard
 from .util import UserError, atomic_write, canonical, digest, file_hash, https_url, now, timestamp, read_json
 
 
@@ -28,6 +29,7 @@ class Engine:
         self.store = Store(workspace.path / "state.sqlite3")
         self.provider = provider
         self.captions = CaptionMemory(self.store, workspace.path)
+        self.repeat = RepeatGuard(self)
 
     def close(self):
         self.store.close()
@@ -64,6 +66,7 @@ class Engine:
                 return {"asset":concurrent,"duplicate":True}
             self.store.db.execute("INSERT INTO assets(id,hash,title,path,drive_id,drive_parent,library,created) VALUES(?,?,?,?,?,?,?,?)",
                                   (identity, qc["sha256"], source.name, str(target), drive_id, drive_parent, int(library), now()))
+            self.store.work_id(identity)
             if drive_id:
                 self.store.db.execute("INSERT OR IGNORE INTO asset_sources(asset_id,provider,source_id,parent,version,created) VALUES(?,?,?,?,?,?)",
                                       (identity,"gdrive",drive_id,drive_parent,drive_version,now()))
@@ -127,6 +130,13 @@ class Engine:
         for key in ("captions","media_by_account"):
             if key in specification and not isinstance(specification[key],dict): raise UserError(f"{key} must be an object.")
         selected = self.targets(specification.get("accounts", "all"))
+        repeat = self.repeat.check(asset['id'], [row['id'] for row in selected])
+        if repeat['status'] != 'clear':
+            return {"status": repeat['status'], "repeat": repeat, "request_id": None}
+        excluded = {row['destination_id'] for row in repeat['covered'] + repeat['reserved']}
+        selected = [row for row in selected if row['id'] not in excluded]
+        if not selected:
+            return {"status": "already_covered_or_reserved", "repeat": repeat, "request_id": None}
         media = Path(specification.get("media") or asset["path"]).expanduser().resolve()
         # A rendition must be an engine-created workspace file, not an arbitrary new video.
         if media != Path(asset["path"]).resolve():
@@ -195,7 +205,7 @@ class Engine:
         for destination_id, data in payload["targets"].items():
             self.captions.add(data["text"], "suggestion", asset_id=asset["id"], destination_id=destination_id,
                               note=f"Prepared request {request_id}; not a user-approved voice example.")
-        return {"request_id": request_id, "payload_hash": payload_hash, "preview": payload}
+        return {"request_id": request_id, "payload_hash": payload_hash, "preview": payload, "repeat": repeat}
 
     def authorize(self, request_id: str, payload_hash: str, note: str) -> dict:
         self.config = self.workspace.config
@@ -209,12 +219,23 @@ class Engine:
         if self.config["paused"]:
             raise UserError("Workspace is paused. Resume before authorizing publication.")
         payload = json.loads(request["payload"])
+        check = self.repeat.check(request['asset_id'], list(payload['targets']))
+        if check['status'] != 'clear':
+            return {'request_id': request_id, 'status': check['status'], 'repeat': check, 'jobs': []}
         results = []
         with self.store.transaction():
+            check = self.repeat.inspect_cached(request['asset_id'], list(payload['targets']))
+            if check['status'] != 'clear':
+                self.store.db.execute("INSERT INTO repeat_holds VALUES(?,?,?,?) ON CONFLICT(asset_id) DO UPDATE SET status=excluded.status,data=excluded.data,updated=excluded.updated",(request['asset_id'],check['status'],canonical(check),now()))
+                return {'request_id':request_id,'status':check['status'],'repeat':check,'jobs':[]}
             for destination_id, target in payload["targets"].items():
                 destination = self.store.one("SELECT * FROM destinations WHERE id=?", (destination_id,))
                 if not destination or not destination["enabled"] or destination["profile_id"] not in self.config["profiles"] or destination["profile_id"] != target["profile_id"] or destination["provider_id"] != target["account_id"]:
                     raise UserError("Account scope/identity changed; prepare a new request.")
+                shared = self.store.work_job(request['asset_id'], destination_id)
+                if shared and shared['asset_id'] != request['asset_id']:
+                    results.append({'destination_id':destination_id, 'job_id':shared['id'], 'state':shared['state'], 'reused':True, 'work_coverage':True})
+                    continue
                 existing = self.store.one("SELECT * FROM jobs WHERE asset_id=? AND destination_id=?", (request["asset_id"], destination_id))
                 if request["mode"] == "schedule":
                     if timestamp(target["due"]) <= datetime.now(timezone.utc):
@@ -236,6 +257,7 @@ class Engine:
                             self.store.db.execute("UPDATE jobs SET request_id=?,due=?,payload=?,idempotency_key=?,state='prepared',provider_id=NULL,submitted=NULL,attempts=0,error=NULL,receipt=NULL,updated=? WHERE id=?",
                                 (request_id,target["due"],canonical(target),str(uuid.uuid4()),now(),existing["id"]))
                             self.store.event("unsubmitted-job-revised",existing["id"],{"old_request":existing["request_id"],"new_request":request_id})
+                            self.store.reserve_work(request["asset_id"], destination_id, existing["id"])
                             results.append({"destination_id":destination_id,"job_id":existing["id"],"state":"prepared","revised":True})
                             continue
                         results.append({"destination_id": destination_id, "job_id": existing["id"], "state": existing["state"], "reused": True,
@@ -251,6 +273,7 @@ class Engine:
                 self.store.add_obligations(request["asset_id"], [destination_id])
                 self.store.db.execute("INSERT INTO jobs(id,request_id,asset_id,destination_id,due,payload,idempotency_key,updated) VALUES(?,?,?,?,?,?,?,?)",
                                       (job_id, request_id, request["asset_id"], destination_id, target["due"], canonical(target), str(uuid.uuid4()), now()))
+                self.store.reserve_work(request["asset_id"], destination_id, job_id)
                 results.append({"destination_id": destination_id, "job_id": job_id, "state": "prepared", "reused": False})
             self.store.db.execute("UPDATE requests SET authorization=?,status='authorized' WHERE id=?", (note, request_id))
             self.store.event("request-authorized", request_id, {"payload_hash": payload_hash, "note": note})
@@ -260,7 +283,7 @@ class Engine:
     def _claim(self, job_id: str, owner: str):
         with self.store.transaction():
             job = self.store.one("SELECT * FROM jobs WHERE id=?", (job_id,))
-            if not job or job["state"] in {"verified", "failed", "cancelled", "provider_draft"}:
+            if not job or job["state"] in {"verified", "failed", "cancelled", "provider_draft", "repeat_hold"}:
                 return None
             if job["lease_until"] and job["lease_until"] > time.time():
                 return None
@@ -272,7 +295,8 @@ class Engine:
         allowed = {"state", "provider_id", "payload", "submitted", "attempts", "error", "receipt"}
         if set(fields)-allowed:
             raise RuntimeError("Unknown job fields")
-        with self.store.transaction():
+        from contextlib import nullcontext
+        with (nullcontext() if self.store.db.in_transaction else self.store.transaction()):
             assignments = ",".join(f"{key}=?" for key in fields)
             cursor = self.store.db.execute(f"UPDATE jobs SET {assignments},updated=? WHERE id=? AND lease_owner=? AND lease_until>?",
                                            (*fields.values(), now(), job_id, owner, time.time()))
@@ -293,7 +317,7 @@ class Engine:
                     and (entry.get("accountId", {}).get("_id") if isinstance(entry.get("accountId"), dict) else entry.get("accountId")) == expected["account_id"]]
         state, error = "verification_pending", None
         entry = matching[0] if len(matching) == 1 else {}
-        if len(matching)==1 and (entry.get("status") == "failed" or post.get("status") == "failed"):
+        if len(matching)==1 and (entry.get("status") == "failed" or (post.get("status") == "failed" and entry.get("status") != "published")):
             state, error = "failed", "Provider reports publication failure. Review before retrying."
         elif len(matching)==1 and post.get("status") == "draft":
             state = "provider_draft"
@@ -317,6 +341,8 @@ class Engine:
             cursor=self.store.db.execute("UPDATE jobs SET state=?,receipt=?,error=?,updated=? WHERE id=? AND lease_owner=? AND lease_until>?",(state,canonical(response),error,now(),job["id"],owner,time.time()))
             if cursor.rowcount != 1: raise UserError("Job ownership expired; reconcile before continuing.")
             self.store.event("provider-result", job["id"], {"state": state, "response": response})
+            nonpublication=(state=='failed' and entry.get('status')=='failed' and not any(entry.get(k) for k in ('platformPostId','postId','platformPostUrl')))
+            self.store.set_meta('nonpublication:'+job['id'],'1' if nonpublication else '0')
             if state == "verified":
                 self.store.db.execute("UPDATE obligations SET status='verified',updated=? WHERE asset_id=? AND destination_id=?",
                                       (now(), job["asset_id"], job["destination_id"]))
@@ -375,6 +401,17 @@ class Engine:
             media = Path(target.get("media",asset_payload["media"]))
             if file_hash(media) != target.get("media_hash",asset_payload["media_hash"]):
                 raise UserError("Approved media changed; prepare and approve its new revision.")
+            if not job['submitted']:
+                checked = self.repeat.check(job['asset_id'], [job['destination_id']])
+                if checked['status'] != 'clear':
+                    self._update(job_id, owner, state='repeat_hold', error='Repeat guard: '+checked['status'])
+                    return {'job_id':job_id, 'state':'repeat_hold', 'repeat':checked}
+                with self.store.transaction():
+                    current = self.repeat.inspect_cached(job['asset_id'], [job['destination_id']])
+                    if current['status'] != 'clear':
+                        self.store.db.execute("UPDATE jobs SET state='repeat_hold',error='Repeat history changed',updated=? WHERE id=? AND lease_owner=?",(now(),job_id,owner))
+                        return {'job_id':job_id,'state':'repeat_hold','repeat':current}
+                    self.store.reserve_work(job['asset_id'], job['destination_id'], job_id)
             health = self.provider.health(target["account_id"])
             permissions=health.get("permissions") or {}
             if health.get("status") not in {"healthy", "ok"} or permissions.get("canPost") is not True or permissions.get("missingRequired"):
@@ -406,7 +443,16 @@ class Engine:
                 job["payload"] = canonical(target)
             elif request["mode"] == "schedule" and not job["submitted"] and timestamp(target["due"]) <= datetime.now(timezone.utc):
                 raise UserError("Scheduled time passed before submission; choose a future time.")
-            self._update(job_id, owner, state="submitting", submitted=job["submitted"] or now(), attempts=job["attempts"]+1, error=None)
+            if not job['submitted']:
+                with self.store.transaction():
+                    current=self.repeat.inspect_cached(job['asset_id'],[job['destination_id']])
+                    if current['status']!='clear':
+                        self.store.db.execute("UPDATE jobs SET state='repeat_hold',error='Repeat evidence changed before create',updated=? WHERE id=? AND lease_owner=?",(now(),job_id,owner))
+                        return {'job_id':job_id,'state':'repeat_hold','repeat':current}
+                    self.store.reserve_work(job['asset_id'],job['destination_id'],job_id)
+                    self._update(job_id, owner, state="submitting", submitted=now(), attempts=job["attempts"]+1, error=None)
+            else:
+                self._update(job_id, owner, state="submitting", attempts=job["attempts"]+1, error=None)
             submitted = True
             response = self.provider.create(target["api_payload"], job["idempotency_key"])
             post = extract_post(response)
@@ -427,6 +473,7 @@ class Engine:
         finally:
             with self.store.transaction():
                 self.store.db.execute("UPDATE jobs SET lease_owner=NULL,lease_until=NULL WHERE id=? AND lease_owner=?", (job_id, owner))
+            self.store.release_work_claim(job_id)
             self.close_asset(job["asset_id"])
             self.export_logs()
 
@@ -447,13 +494,14 @@ class Engine:
                     raise UserError("This attempt has an unknown provider outcome; reconcile it before cancelling.")
                 self.store.db.execute("UPDATE jobs SET lease_owner=?,lease_until=?,updated=? WHERE id=?",
                                       (owner,time.time()+600,now(),job_id))
-            elif job["state"] == "prepared":
+            elif job["state"] in {"prepared", "repeat_hold"}:
                 self.store.db.execute("UPDATE jobs SET state='cancelled',error=NULL,updated=? WHERE id=?",(now(),job_id))
                 self.store.event("job-cancelled",job_id,{"kind":"local-unsent"})
                 local_cancelled=True
             else:
                 raise UserError("Only unsent prepared work or confirmed provider-scheduled posts can be cancelled.")
         if local_cancelled:
+            self.store.release_work_claim(job_id)
             self.export_logs()
             return {"job_id":job_id,"state":"cancelled","external_action":False}
         try:
@@ -493,6 +541,7 @@ class Engine:
                 self.store.db.execute("UPDATE jobs SET state='cancelled',receipt=?,error=NULL,updated=? WHERE id=? AND lease_owner=?",
                     (canonical(verified),now(),job_id,owner))
                 self.store.event("job-cancelled",job_id,{"kind":"provider-scheduled","provider_id":job["provider_id"]})
+            self.store.release_work_claim(job_id)
             self.export_logs()
             return {"job_id":job_id,"state":"cancelled","external_action":True}
         except UserError as exc:
@@ -584,6 +633,7 @@ class Engine:
                 job["payload"]=canonical(new)
             else: raise UserError("Unknown recovery operation.")
             with self.store.transaction():
+                self.store.reserve_work(job["asset_id"],job["destination_id"],job_id)
                 self.store.set_meta("recovery:"+job_id,operation)
                 self.store.event("recovery-intent",job_id,{"operation":operation,"provider_id":identity,"note":note})
             self._update(job_id,owner,state="verification_pending")
@@ -595,6 +645,7 @@ class Engine:
             return {"job_id":job_id,"state":"recovery_pending","error":str(exc)}
         finally:
             self.store.db.execute("UPDATE jobs SET lease_owner=NULL,lease_until=NULL WHERE id=? AND lease_owner=?",(job_id,owner))
+            self.store.release_work_claim(job_id)
             self.close_asset(job["asset_id"])
             self.export_logs()
 
@@ -659,6 +710,11 @@ class Engine:
         for row in self.store.rows(query, (*params,cursor,batch)):
             self.store.set_meta(cursor_key,row["source_id"])
             asset=self.store.require_asset(row["asset_id"])
+            self.repeat.queue_sources()
+            review_source=self.store.one("SELECT state FROM repeat_source_actions WHERE source_id=?",(row['source_id'],))
+            if review_source:
+                results.append({'asset_id':row['asset_id'],'source_id':row['source_id'],'state':'repeat_review_filing','review_state':review_source['state']})
+                continue
             target_folder=folders.get("posted") if asset["library"] else folders.get("request_scoped")
             if not target_folder:
                 results.append({"asset_id":row["asset_id"],"source_id":row["source_id"],"state":"needs_request_archive_folder"})

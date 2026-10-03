@@ -46,6 +46,13 @@ def parser():
     a = sub.add_parser("execute"); a.add_argument("job")
     a = sub.add_parser("cancel"); a.add_argument("job")
     a = sub.add_parser("recover"); a.add_argument("job"); a.add_argument("operation",choices=["reconcile","retry-failed","promote-draft"]); a.add_argument("--note-file",type=Path,required=True); a.add_argument("--provider-id"); a.add_argument("--request"); a.add_argument("--payload-hash")
+    a = sub.add_parser('repeat-policy'); a.add_argument('--enabled',choices=['yes','no'],required=True); a.add_argument('--note-file',type=Path,required=True)
+    a = sub.add_parser('repeat-check'); a.add_argument('asset'); a.add_argument('--accounts', default='all')
+    a = sub.add_parser('repeat-index'); a.add_argument('--limit', type=int, default=3)
+    a = sub.add_parser('repeat-review'); a.add_argument('asset'); a.add_argument('--decision', choices=['same','distinct'], required=True); a.add_argument('--match', default=''); a.add_argument('--note-file',type=Path,required=True)
+    a = sub.add_parser('repeat-panel'); a.add_argument('--asset')
+    sub.add_parser('repeat-sync')
+    a = sub.add_parser('repeat-restore'); a.add_argument('source')
     sub.add_parser("tick")
     a = sub.add_parser("status"); a.add_argument("--asset"); a.add_argument("--limit",type=int,default=100); a.add_argument("--offset",type=int,default=0)
     a = sub.add_parser("next-times"); a.add_argument("destination"); a.add_argument("--analytics", action="store_true")
@@ -59,10 +66,21 @@ def parser():
 
 def dispatch(args, engine):
     command = args.command
+    if command == 'repeat-policy': return engine.repeat.set_policy(args.enabled=='yes',args.note_file.read_text())
+    if command == 'repeat-check':
+        return engine.repeat.check(args.asset,[d['id'] for d in engine.targets(args.accounts)])
+    if command == 'repeat-index': return engine.repeat.index(args.limit)
+    if command == 'repeat-review': return engine.repeat.review(args.asset,args.decision,args.match,args.note_file.read_text())
+    if command == 'repeat-panel': return engine.repeat.panel(args.asset)
+    if command == 'repeat-sync': return engine.repeat.sync_sources()
+    if command == 'repeat-restore': return engine.repeat.sync_sources(restore=args.source)
     if command == "audit":
         return audit(engine, live=args.live)
     if command == "configure":
-        engine.workspace.save(read_json(args.file))
+        updated=read_json(args.file)
+        if updated.get('repeat_guard',{}).get('enabled') is False and engine.workspace.config['repeat_guard']['enabled']:
+            raise UserError('Use repeat-policy --enabled no --note-file FILE to record disabling visual checks.')
+        engine.workspace.save(updated)
         return {"configured": True, "next": "audit"}
     if command == "profiles":
         return engine.provider.profiles()
@@ -239,6 +257,13 @@ def dispatch(args, engine):
         if not 1<=args.limit<=500 or args.offset<0:
             raise UserError("Status pagination requires limit 1–500 and a nonnegative offset.")
         assets=engine.store.rows("SELECT id,title,state,library FROM assets ORDER BY created DESC,id LIMIT ? OFFSET ?",(args.limit,args.offset))
+        for asset in assets:
+            asset['work_id']=engine.store.work_id(asset['id'])
+            asset['repeat_hold']=engine.store.one('SELECT status,data FROM repeat_holds WHERE asset_id=?',(asset['id'],))
+            scope=engine.store.coverage(asset['id'])
+            eligible=[r['destination_id'] for r in scope['destinations'] if r['enabled'] and r['connected'] and not engine.store.work_job(asset['id'],r['destination_id'])]
+            asset['eligible_accounts']=eligible
+            asset['automatic_selection_eligible']=bool(asset['library'] and eligible and asset['repeat_hold'] is None)
         ids=[asset["id"] for asset in assets]
         if ids:
             placeholders=",".join("?" for _ in ids)

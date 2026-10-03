@@ -28,6 +28,7 @@ DEFAULTS = {
                  "max_posts_per_day": 4, "minimum_best_time_samples": 10},
     "drive": {"enabled": False, "folders": {}, "credentials_file": "",
               "client_secrets_file": "", "archive_local_uploads": False},
+    "repeat_guard": {"enabled": True, "window_days": 60, "hamming_bits": 6, "duration_tolerance": 0.05, "index_batch": 3, "batch_seconds": 120},
     "limits": {"max_jobs_per_tick": 3, "tick_seconds": 240, "request_timeout": 60},
 }
 
@@ -60,6 +61,13 @@ def validate(config: dict) -> dict:
         "live":("enroll_library",), "captions":("ask_custom_every_time","learn_from_user_feedback"),
         "drive":("enabled","archive_local_uploads"), "schedule":("enabled",)}.items():
         for key in fields: boolean(config[section][key],section+"."+key)
+    repeat=config['repeat_guard']
+    boolean(repeat['enabled'],'repeat_guard.enabled')
+    number(repeat['window_days'],'repeat_guard.window_days',1,3650)
+    number(repeat['hamming_bits'],'repeat_guard.hamming_bits',0,20)
+    number(repeat['duration_tolerance'],'repeat_guard.duration_tolerance',0,.25,False)
+    number(repeat['index_batch'],'repeat_guard.index_batch',1,20)
+    number(repeat['batch_seconds'],'repeat_guard.batch_seconds',10,120)
     profiles=config["profiles"]
     if not isinstance(profiles,list) or any(not isinstance(v,str) or not v.strip() for v in profiles) or len(set(profiles))!=len(profiles):
         raise UserError("profiles must be a unique list of verified Zernio profile IDs.")

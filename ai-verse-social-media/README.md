@@ -33,3 +33,5 @@ An AI app that can run this skill, your Zernio account to connect your social ac
 **Current verification:** local checks have passed; real connected-account posting and installation on each advertised host still need testing. A copied skill alone does not connect accounts or start a routine.
 
 Keep credentials in your host's secret storage. Your videos, caption examples and posting history belong in your private workspace.
+
+Version 0.2.0 adds [repeated-footage protection](references/repeat-guard.md). Back up the private workspace before its atomic database schema-2 upgrade; warm existing history in bounded batches. Older engines cannot open migrated state.

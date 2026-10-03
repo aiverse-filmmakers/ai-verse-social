@@ -51,3 +51,5 @@ Pause new creates, run `backup /safe/private/location/customer.zip`, replace the
 See `VERIFICATION.md` for local tests and outstanding release gates. This file describes installation, not a claim that all hosts/accounts have passed live tests. No public publishing or remote setup changes have been performed during development.
 
 The `hosts/` directory contains starter guidance and onboarding aliases for Hermes and Claude Code. Hermes aliases are separate tiny skills; Claude command files are copyable into a supported `.claude/commands/` location (or ported to its current skill format). Codex and OpenClaw guidance explains the needed runtime/scheduler access. The slash surface and scheduler still need a smoke check against each customer's installed host version.
+
+Version 0.2.0 adds [repeated-footage protection](references/repeat-guard.md). Back up the private workspace before its atomic database schema-2 upgrade; warm existing history in bounded batches. Older engines cannot open migrated state.

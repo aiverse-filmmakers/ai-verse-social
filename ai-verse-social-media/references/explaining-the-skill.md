@@ -44,3 +44,5 @@ Keep these distinctions clear when relevant:
 - Filing depends on the accounts required for that video's distribution; a one-time request and a reusable video may have different completion requirements.
 
 Before sending, check whether a newcomer could answer: **What will this help me do? When would I use it? What can I ask next?** Simplify if not. Correct any wording that makes an unconnected or untested feature sound ready.
+
+When explaining repeat protection: “It checks whether footage was used before. If unsure, it asks for review. A new account can still receive the video.” Mention the sampling limit when relevant; do not call it perfect duplicate detection or full QC.

@@ -19,6 +19,7 @@ Resolve this installed skill's absolute directory and the customer-private works
 - Comment replies, incoming DMs, or comment-to-DM setup: [optional engagement setup](references/engagement-setup.md). Collect requirements and verify an available integration; the local video engine does not implement an engagement worker.
 - Live video/Drive-link publication, drafts or scheduling: [live and recurring operations](references/operations.md).
 - Caption preference questions, video transcripts, user wording or corrections: [caption workflow](references/captions.md).
+- Repeated-footage checks, review holds, comparison panels or duplicate-source filing: [repeat protection](references/repeat-guard.md).
 - Failures, reconnects, retries, account additions, status questions: [recovery and accounts](references/recovery.md).
 - Command and manifest details: [engine interface](references/engine.md).
 
@@ -31,7 +32,7 @@ Interpret conversation meaning, not exact phrases or word order. Resolve the vid
 3. Load caption context before writing. Record every user idea/custom caption/correction/preference and retain revision links. AI proposals are suggestions, not automatically learned user preferences. Use this host's model to adapt captions; don't invent a second paid model dependency.
 4. Use the selected accounts, not a hardcoded platform set. A platform name with multiple accounts needs a configured unambiguous choice or clarification. 'All' means included eligible accounts in the selected customer profile(s), frozen for that request.
 5. Prepare platform-specific text/fields and validated media. Respect customer editing preferences and platform requirements. Preserve approved wording; after a material change, follow the applicable approval policy.
-6. Use `prepare`, then `authorize` with its exact payload hash and the actual authorization evidence. Only the bundled `execute`/`tick` creates posts. Do not bypass durable claims by issuing ad-hoc provider post calls from chat.
+6. Check repeated footage through the shared engine. Holds need bounded indexing or an explicit review; never bypass them with a direct provider call. Exact/confirmed work may reach missing accounts but never repeat covered accounts. See [repeat protection](references/repeat-guard.md). Use `prepare`, then `authorize` with its exact payload hash and the actual authorization evidence. Only the bundled `execute`/`tick` creates posts. Do not bypass durable claims by issuing ad-hoc provider post calls from chat.
 7. Never recreate a successful destination. Pending/uncertain attempts are reconciled with their existing identifier or the same still-valid provider idempotency key. Missing status, queue acceptance, or API upload alone is not publication proof.
    If the user asks to cancel, use `cancel JOB`: it cancels unsent work locally or a provider post still confirmed as scheduled; never delete a published post or guess at an unknown create outcome.
 8. Log each account independently. A partial result remains recoverable; folder sync failures retry sync only. For Drive sources, run `drive-sync` only after every requested account confirms publication; a request for one platform must not silently enroll the video in all-account recurring distribution.

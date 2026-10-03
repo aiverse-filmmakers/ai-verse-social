@@ -21,6 +21,11 @@ def audit(engine, *, live=False, budget=120):
     add("workspace permissions", "ready" if private else "needs_setup",
         "Restrict this folder to the customer account; verify Windows ACLs if applicable.")
     add("database", "ready", detail="SQLite quick-check passed")
+    repeat=engine.repeat.readiness()
+    repeat_status='ready' if repeat['status']=='ready' or (repeat['status']=='disabled' and repeat['recorded_choice']) else 'needs_setup'
+    add('repeat guard',repeat_status,'Run repeat-index --limit 3 until ready, or record the customer choice with repeat-policy.' if repeat_status!='ready' else '',repeat)
+    if config['drive']['enabled']:
+        add('repeat review folder','ready' if config['drive']['folders'].get('repeat_review') else 'optional','Map an approved Repeat Material - Review folder for reversible duplicate filing; local protection works without it.')
     restore_pending=engine.store.meta("restore_reconciliation_required") == "1"
     add("restore reconciliation", "needs_setup" if restore_pending else "ready",
         "Review provider history for every connected account and run restore-reconcile." if restore_pending else "")
@@ -134,7 +139,7 @@ def audit(engine, *, live=False, budget=120):
             engine.provider.timeout=original_timeout
     else:
         add("live connection checks", "not_tested", "Run audit --live for read-only provider/Drive checks.")
-    required = {"ffmpeg", "ffprobe", "provider secret", "profile scope", "included accounts", "workspace permissions"}
+    required = {"ffmpeg", "ffprobe", "provider secret", "profile scope", "included accounts", "workspace permissions", "repeat guard"}
     base_ready = all(c["status"] == "ready" for c in checks if c["component"] in required)
     base_ready = base_ready and all(c["status"] == "ready" for c in checks if c["component"].startswith("account:"))
     if live:

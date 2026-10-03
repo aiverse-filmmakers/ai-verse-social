@@ -88,6 +88,12 @@ Pause new sending, cancel scheduled work, publish an existing draft, investigate
 
 Pause does not cancel posts already scheduled with the posting service. Cancellation cannot undo a published post or guarantee stopping one already being sent.
 
+### 13. Avoid posting the same footage again
+
+It checks recent footage before posting. Likely repeats wait for a quick review. Confirmed duplicates can go to a review folder; accounts that have not received the video can still get it. The check samples pictures, so it cannot catch every edit.
+
+**Try:** “Why is this video waiting for review?”
+
 ## Start with one video
 
 1. Ask for help setting up.

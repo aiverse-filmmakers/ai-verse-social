@@ -7,3 +7,5 @@
 `editing.standard.json` demonstrates a 1080 × 1920 padded rendition and audio normalization. It does not crop away source content, invent captions, or apply a default customer logo. Put optional branding assets inside the private workspace `branding/` folder for relocation-safe backups. Use passthrough to preserve the source encoding.
 
 Capability contracts intentionally have no universal populated example: collect current video support, limits, required fields and final-publication evidence for the customer's actual account before enabling it.
+
+The empty settings enable sampled repeat protection. Map `drive.folders.repeat_review` only to an approved review folder. Record visual-check opt-out with `repeat-policy`; do not paste customer footage/history into this template.

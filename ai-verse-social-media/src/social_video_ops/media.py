@@ -23,11 +23,11 @@ def run(args: list[str], timeout=120, cwd=None) -> str:
     return result.stdout
 
 
-def probe(path: Path, decode=True) -> dict:
+def probe(path: Path, decode=True, timeout=60) -> dict:
     if not path.is_file() or path.stat().st_size == 0:
         raise UserError("Video file is missing or empty.")
     source_hash = file_hash(path)
-    raw = json.loads(run(["ffprobe", "-v", "error", "-show_format", "-show_streams", "-of", "json", str(path)], timeout=60))
+    raw = json.loads(run(["ffprobe", "-v", "error", "-show_format", "-show_streams", "-of", "json", str(path)], timeout=timeout))
     videos = [stream for stream in raw.get("streams", []) if stream.get("codec_type") == "video"]
     audio = [stream for stream in raw.get("streams", []) if stream.get("codec_type") == "audio"]
     if not videos:

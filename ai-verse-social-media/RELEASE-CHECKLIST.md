@@ -14,3 +14,5 @@ Before advertising a host/account combination as tested, run exactly this small 
 Record date, host/version, dependency versions, tested account/platform route and actual evidence in a private customer test report. Publish support claims only for combinations that pass. No additional product rebuild is implied by these account-specific checks.
 
 Before public sale, the owner must select purchaser terms (who can use/modify/resell, installation limits, update/support policy) and review notices for the actual distributed runtime. No customer license grant has been invented here. See VERIFICATION.md and THIRD-PARTY-NOTICES.md.
+
+For repeat protection during host acceptance: try a re-encoded authorized fixture without publishing, inspect its review evidence, confirm the work, verify an already-covered account stays excluded and a newly authorized account remains eligible. Verify the mapped review folder and restore read-back using disposable customer-approved files.

@@ -94,9 +94,11 @@ class WorkflowTests(unittest.TestCase):
         self.workspace.init()
         config = self.workspace.config
         config["profiles"] = ["customer-profile"]
+        config["repeat_guard"]["enabled"] = False
         self.workspace.save(config)
         self.provider = FakeProvider()
         self.engine = Engine(self.workspace, self.provider)
+        self.engine.store.set_meta("repeat_policy_note","Synthetic fake-byte provider fixtures intentionally test only byte/work protection")
         self.patcher = patch("social_video_ops.engine.probe", fake_probe)
         self.patcher.start()
         self.source = self.path / "video.mp4"
@@ -232,9 +234,10 @@ class WorkflowTests(unittest.TestCase):
         self.accounts([("ig", "instagram", "native")]); asset = self.ingest()
         first = self.prepare(asset)
         self.engine.execute(first["jobs"][0]["job_id"])
-        second = self.prepare(asset)
-        self.assertEqual(first["jobs"][0]["job_id"], second["jobs"][0]["job_id"])
-        self.assertEqual(self.engine.execute(second["jobs"][0]["job_id"])["state"], "not_claimed")
+        second = self.engine.prepare({'asset_id':asset,'accounts':'all'})
+        self.assertEqual(second['status'],'already_covered_or_reserved')
+        self.assertIsNone(second['request_id'])
+        self.assertEqual(second['repeat']['covered'][0]['job']['id'],first['jobs'][0]['job_id'])
         self.assertEqual(len(self.provider.created), 1)
 
     def test_cancel_unsent_job_locally_without_provider_call(self):

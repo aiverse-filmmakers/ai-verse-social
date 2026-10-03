@@ -14,6 +14,11 @@ Run `python3.11 ABSOLUTE_SKILL/scripts/social.py --workspace ABSOLUTE_PRIVATE_WO
 | `drive-connect CLIENT TOKEN`, `drive-inventory FOLDER_KEY` | Optional OAuth and folder inventory |
 | `drive-sync [--asset ID]` | Move fully verified Drive sources and, when explicitly enabled, upload chat/local videos to Posted/Library or Posted/Request-scoped; retry filing only |
 | `drive-intake [--limit N] [--library]` | Page through the configured Ready folder, queue new files, ingest a small bounded batch |
+| `repeat-check ASSET [--accounts SELECTOR]`, `repeat-index [--limit 3]` | Check eligibility or resume bounded history extraction |
+| `repeat-panel [--asset ASSET]` | Cached nine-work SVG panel, candidate samples and actual match evidence; JSON legend/pending tiles |
+| `repeat-review ASSET --decision same/distinct [--match WORK] --note-file FILE` | Record pair-specific review or confirmed shared identity |
+| `repeat-sync`, `repeat-restore SOURCE_ID` | Reconcile reversible extra-source filing/restoration without posting |
+| `repeat-policy --enabled yes/no --note-file FILE` | Record customer visual-check choice; byte/work protection remains |
 | `edit ASSET [--recipe FILE]` | Source-preserving pass-through or standard rendering |
 | `transcribe ASSET [--model-path FILE]`, `transcript-import ASSET FILE` | Actual local/host speech transcript |
 | `caption-add FILE --kind KIND [--asset ID] [--destination ID] [--parent ID] [--note TEXT]` | Preserve user examples, proposals and revisions |
@@ -68,3 +73,5 @@ Drive sync processes rotating bounded batches (not the whole library) and `--ass
 
 
 A capability object records `video: true`, an `evidence` source, optional `caption_limit`, `max_bytes`, `max_duration`, `required_fields`, and `proof` (`public_url` default, `provider_identifier` for an explicitly configured non-public proof route). Capability configuration is not a live successful-post claim. The onboarding audit must establish the actual route.
+
+See [repeat guard](repeat-guard.md) for states and review rules. `prepare` may return a hold/no-op without a request ID; only a returned preview/hash can be authorized. Status exposes eligible accounts and automatic library-selection eligibility. SQLite schema is 2; settings remain schema 1. Upgrade/backups preserve original proof ownership.
