@@ -61,12 +61,25 @@ def install(source, root, workspace, python, update=False):
         shutil.copytree(source, stage / NAME)
         note = {'workspace': str(workspace), 'python': str(Path(python).absolute()),
                 'entrypoint': str(root / NAME / 'scripts/social.py')}
+        # Record a revision only when these installed bytes came from a clean
+        # official checkout. Local edits must never be labelled as that commit.
         try:
             checkout = source.parent.resolve()
-            top = subprocess.run(['git', '-C', str(checkout), 'rev-parse', '--show-toplevel'], capture_output=True, text=True, timeout=5)
-            if top.returncode == 0 and Path(top.stdout.strip()).resolve() == checkout:
-                revision = subprocess.run(['git', '-C', str(checkout), 'rev-parse', 'HEAD'], capture_output=True, text=True, timeout=5, check=True)
-                note['revision'] = revision.stdout.strip()
+            def git(*arguments):
+                return subprocess.run(['git', '-C', str(checkout), *arguments],
+                                      capture_output=True, text=True, timeout=5, check=True).stdout.strip()
+            top = Path(git('rev-parse', '--show-toplevel')).resolve()
+            origin = git('remote', 'get-url', 'origin')
+            official = {
+                'https://github.com/aiverse-filmmakers/ai-verse-social.git',
+                'https://github.com/aiverse-filmmakers/ai-verse-social',
+                'git@github.com:aiverse-filmmakers/ai-verse-social.git',
+                'ssh://git@github.com/aiverse-filmmakers/ai-verse-social.git',
+            }
+            if top == checkout and origin in official and not git('status', '--porcelain', '--untracked-files=all', '--ignored', '--', NAME):
+                revision = git('rev-parse', 'HEAD')
+                if len(revision) == 40 and all(c in '0123456789abcdef' for c in revision):
+                    note['revision'] = revision
         except (OSError, subprocess.SubprocessError):
             pass
         (stage / NAME / 'LOCAL-SETUP.json').write_text(json.dumps(note, indent=2) + '\n')

@@ -62,4 +62,4 @@ The repository contains only the distributable package. Original school captures
 
 ## Silent weekly update check
 
-During setup, optionally enable one weekly check. Nothing changed? No message. New revision? One notification. The check never installs updates itself. Your agent verifies its scheduler and private-repo access before enabling it; installation alone does not create the job. [How it works](ai-verse-social-media/references/updates.md).
+During setup, optionally enable one weekly check. Nothing changed? No message. New revision? One notification after confirmed delivery; an interrupted send remains pending. The check never installs updates itself. Your agent verifies its scheduler and private-repo access before enabling it; installation alone does not create the job. [How it works](ai-verse-social-media/references/updates.md).

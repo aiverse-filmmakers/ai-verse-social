@@ -16,4 +16,4 @@ Rerun resumes and verifies; it doesn't erase preferences, resync private sources
 
 Optional engagement has its own private `engagement-setup.json` decisions, integration evidence and test status. Review that record alongside the video audit. An engagement questionnaire or an existing Zernio connection does not itself mean automatic replies are running.
 
-Offer an optional [silent weekly update check](updates.md). With the customer’s authorization, configure exactly one host-native job, verify worker GitHub access and read back its next run. Save progress if scheduler/authentication is missing. Notify only on a newly detected revision or a new blocker; do not auto-install updates.
+Offer an optional [silent weekly update check](updates.md). With the customer’s authorization, configure exactly one host-native job, verify worker GitHub access, test conditional silence and confirmed delivery/acknowledgement, and read back its next run. Save progress if scheduler/authentication is missing. Notify only on a newly detected revision or a new blocker; do not auto-install updates.
