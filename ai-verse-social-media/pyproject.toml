@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-verse-social-media"
+version = "0.1.1"
+description = "Portable account-aware video publishing and caption memory for AI agents"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+drive = ["google-api-python-client>=2.150,<3", "google-auth-oauthlib>=1.2,<2"]
+transcribe = ["faster-whisper>=1.0,<2"]
+
+[project.scripts]
+ai-verse-social = "social_video_ops.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

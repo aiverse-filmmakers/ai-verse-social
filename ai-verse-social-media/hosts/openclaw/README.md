@@ -1,0 +1,3 @@
+# OpenClaw / other Agent Skills hosts
+
+Install the full folder in a configured skills root and confirm the host loads its `SKILL.md` and accompanying files. Skills teach behavior; they do not grant shell, filesystem, Drive, Zernio, or scheduler access. Connect those capabilities using the host's own tools and secret manager. Configure a persistent private workspace and one worker owner. For recurring use, schedule an agent turn with this skill loaded, then use `drive-intake`, agent caption preparation, `tick`, and `drive-sync` within the approved scope. Verify a test run and the scheduler's persisted job state on that specific host before enabling autonomous publishing.

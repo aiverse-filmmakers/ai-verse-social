@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "timezone": "UTC",
+  "language": "en",
+  "paused": false,
+  "profiles": [],
+  "accounts": {
+    "auto_enroll": false,
+    "future_backfill": true
+  },
+  "approval": {
+    "preview_required": true,
+    "recurring_authorized": false
+  },
+  "captions": {
+    "mode": "idea",
+    "idea": "",
+    "ask_custom_every_time": false,
+    "voice": "",
+    "avoid": [],
+    "cta": "",
+    "platforms": {},
+    "learn_from_user_feedback": true
+  },
+  "live": {
+    "enroll_library": false
+  },
+  "editing": {
+    "recipe": "passthrough",
+    "options": {}
+  },
+  "schedule": {
+    "enabled": false,
+    "windows": [
+      "10:00"
+    ],
+    "min_gap_minutes": 120,
+    "max_posts_per_day": 4,
+    "minimum_best_time_samples": 10
+  },
+  "drive": {
+    "enabled": false,
+    "folders": {},
+    "credentials_file": "",
+    "client_secrets_file": "",
+    "archive_local_uploads": false
+  },
+  "limits": {
+    "max_jobs_per_tick": 3,
+    "tick_seconds": 240,
+    "request_timeout": 60
+  }
+}

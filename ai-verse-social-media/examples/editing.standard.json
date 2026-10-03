@@ -1,0 +1,8 @@
+{
+  "recipe": "standard",
+  "options": {
+    "width": 1080,
+    "height": 1920,
+    "normalize_audio": true
+  }
+}

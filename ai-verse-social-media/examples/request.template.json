@@ -1,0 +1,13 @@
+{
+  "asset_id": "REPLACE_WITH_INGEST_RESULT",
+  "accounts": [
+    "REPLACE_WITH_DESTINATION_ID"
+  ],
+  "mode": "now",
+  "captions": {
+    "REPLACE_WITH_DESTINATION_ID": {
+      "text": "Replace with the approved platform caption.",
+      "platform_data": {}
+    }
+  }
+}
