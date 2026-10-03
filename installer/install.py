@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import shutil
 import sys
+import subprocess
 import tempfile
 
 HOSTS = ('hermes', 'claude-code', 'codex', 'openclaw')
@@ -60,6 +61,14 @@ def install(source, root, workspace, python, update=False):
         shutil.copytree(source, stage / NAME)
         note = {'workspace': str(workspace), 'python': str(Path(python).absolute()),
                 'entrypoint': str(root / NAME / 'scripts/social.py')}
+        try:
+            checkout = source.parent.resolve()
+            top = subprocess.run(['git', '-C', str(checkout), 'rev-parse', '--show-toplevel'], capture_output=True, text=True, timeout=5)
+            if top.returncode == 0 and Path(top.stdout.strip()).resolve() == checkout:
+                revision = subprocess.run(['git', '-C', str(checkout), 'rev-parse', 'HEAD'], capture_output=True, text=True, timeout=5, check=True)
+                note['revision'] = revision.stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            pass
         (stage / NAME / 'LOCAL-SETUP.json').write_text(json.dumps(note, indent=2) + '\n')
         names = [NAME, 'ai-verse-social-onboard', 'ai-verse-social-media-onboard', 'ai-verse-social-media-oboard']
         for name in names[1:]:

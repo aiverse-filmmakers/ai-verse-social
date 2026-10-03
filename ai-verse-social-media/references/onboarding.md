@@ -15,3 +15,5 @@ For a newcomer, first explain the useful outcome and current step in ordinary la
 Rerun resumes and verifies; it doesn't erase preferences, resync private sources from scratch, or create duplicate folders/schedules. Limit audit to known paths and configured accounts/folders, with a 120-second target budget. Save partial results if external checks take longer. Never spend hours classifying the whole host as part of onboarding.
 
 Optional engagement has its own private `engagement-setup.json` decisions, integration evidence and test status. Review that record alongside the video audit. An engagement questionnaire or an existing Zernio connection does not itself mean automatic replies are running.
+
+Offer an optional [silent weekly update check](updates.md). With the customer’s authorization, configure exactly one host-native job, verify worker GitHub access and read back its next run. Save progress if scheduler/authentication is missing. Notify only on a newly detected revision or a new blocker; do not auto-install updates.

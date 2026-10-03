@@ -59,3 +59,7 @@ For a specific agent, append `-s -- --host hermes` (or `claude-code`, `codex`, `
 To update, back up your private workspace and pause scheduled work first. Re-run with `--update`; unchanged installer-owned skills are replaced with a backup. Personal edits cause installation to stop for review. Account state and secrets live outside the installed skill and are preserved. Run setup/audit before resuming.
 
 The repository contains only the distributable package. Original school captures, account credentials, videos and customer publication logs are excluded.
+
+## Silent weekly update check
+
+During setup, optionally enable one weekly check. Nothing changed? No message. New revision? One notification. The check never installs updates itself. Your agent verifies its scheduler and private-repo access before enabling it; installation alone does not create the job. [How it works](ai-verse-social-media/references/updates.md).

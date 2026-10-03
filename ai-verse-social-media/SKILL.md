@@ -14,6 +14,7 @@ When `LOCAL-SETUP.json` exists beside this file, read it for the installed Pytho
 Resolve this installed skill's absolute directory and the customer-private workspace. Run `scripts/social.py` with Python 3.11+ and `--workspace ABSOLUTE_PRIVATE_PATH`. The workspace must be separate from the installed skill; do not reuse another customer's credentials, account history, or caption examples. Read only the reference relevant to the operation.
 
 - Newcomer explanations, feature discovery, or “what can you do?”: [how to explain the skill](references/explaining-the-skill.md), using the [simple customer guide](START-HERE.md).
+- Weekly version checks or update requests: [updates](references/updates.md). Keep unchanged checks silent and use one verified host-native job.
 - Setup requests, `/ai-verse-social-media-onboard`, or `/ai-verse-social-media-oboard`: [onboarding](references/onboarding.md).
 - Comment replies, incoming DMs, or comment-to-DM setup: [optional engagement setup](references/engagement-setup.md). Collect requirements and verify an available integration; the local video engine does not implement an engagement worker.
 - Live video/Drive-link publication, drafts or scheduling: [live and recurring operations](references/operations.md).
